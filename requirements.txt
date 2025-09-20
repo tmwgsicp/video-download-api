@@ -1,13 +1,19 @@
-# 视频下载API依赖文件 - Ubuntu/最新版本
-# 推荐在Ubuntu 20.04+系统上使用
+# 视频下载API依赖文件
 # 支持Python 3.8+，推荐Python 3.10+
+# 兼容Ubuntu/Debian/Windows等主流系统
 
+# 核心Web框架
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
-python-multipart>=0.0.9
-yt-dlp>=2024.12.13
 pydantic>=2.7.0
-aiofiles>=24.1.0
-pyyaml>=6.0
-aiohttp>=3.9.0
+
+# 视频下载核心
+yt-dlp>=2024.12.13
+
+# 工具库
 requests>=2.31.0
+pyyaml>=6.0
+psutil>=5.9.0
+
+# 可选依赖（根据功能需要）
+python-multipart>=0.0.9  # 文件上传支持（当前未使用，但保留以备将来）

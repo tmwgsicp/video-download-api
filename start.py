@@ -17,10 +17,8 @@ def check_dependencies():
         "uvicorn": "uvicorn", 
         "yt-dlp": "yt_dlp",
         "pydantic": "pydantic",
-        "aiofiles": "aiofiles",
         "requests": "requests",
         "pyyaml": "yaml",
-        "aiohttp": "aiohttp",
         "psutil": "psutil"
     }
     

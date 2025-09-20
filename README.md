@@ -20,43 +20,109 @@
 - **Python 3.8+** 
 - **FFmpeg** （音频提取必需）
 
-> 💻 **推荐系统：Ubuntu 20.04+ / Debian 11+**
-> - 支持最新Python版本和依赖包
-> - 部署简单，兼容性最佳
-> - 项目主要在Ubuntu环境下开发和测试
+### 🎯 部署方式选择
 
-### 安装和启动
+#### 🖥️ 生产环境部署（推荐）
 
-#### 方法一：自动安装（推荐）
+**Linux/Ubuntu 系统**：
+```bash
+git clone https://github.com/tmwgsicp/video-download-api.git
+cd video-download-api
+chmod +x deploy.sh
+./deploy.sh
+```
+
+**Windows 系统**：
+```cmd
+git clone https://github.com/tmwgsicp/video-download-api.git
+cd video-download-api
+双击运行: install.bat
+```
+
+> 💡 **Windows部署脚本说明**：
+> - 自动检查Python环境
+> - 自动创建虚拟环境和安装依赖
+> - 需要手动安装FFmpeg
+> - 使用run.bat启动，保持窗口运行
+
+#### 🔧 开发环境安装
+
+适合开发者和需要自定义配置的用户：
 
 ```bash
-# 克隆项目
+# 1. 克隆项目
 git clone https://github.com/tmwgsicp/video-download-api.git
 cd video-download-api
 
-# 运行安装脚本
-chmod +x install.sh
-./install.sh
+# 2. 创建虚拟环境（推荐）
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# 或 venv\Scripts\activate.bat  # Windows
 
-# 启动服务
-python3 start.py
-```
-
-#### 方法二：手动安装
-
-```bash
-# 1. 安装Python依赖
+# 3. 安装依赖
 pip install -r requirements.txt
 
-# 2. 安装FFmpeg
+# 4. 安装FFmpeg
+# Ubuntu/Debian: sudo apt install ffmpeg
 # macOS: brew install ffmpeg
-# Ubuntu/Debian: sudo apt install ffmpeg  
+# Windows: 从 https://ffmpeg.org 下载并添加到PATH
 
-# 3. 启动服务
-python3 start.py
+# 5. 启动服务
+python start.py
 ```
 
-服务启动后，访问 `http://localhost:8000`
+### 🌐 访问服务
+
+服务启动后，访问：
+- **主页**: http://localhost:8000
+- **API文档**: http://localhost:8000/docs
+- **健康检查**: http://localhost:8000/api/health
+
+### 🖥️ Windows生产部署详细说明
+
+#### 1. 安装步骤
+```cmd
+# 1. 克隆项目
+git clone https://github.com/tmwgsicp/video-download-api.git
+cd video-download-api
+
+# 2. 运行安装脚本
+双击运行 install.bat
+```
+
+#### 2. FFmpeg安装（音频提取功能）
+```cmd
+# 下载FFmpeg
+访问: https://ffmpeg.org/download.html#build-windows
+下载: Windows版本的FFmpeg
+
+# 安装步骤
+1. 解压到 C:\ffmpeg\
+2. 添加 C:\ffmpeg\bin 到系统PATH环境变量
+3. 重启命令提示符验证: ffmpeg -version
+```
+
+#### 3. 启动服务
+```cmd
+# 启动API服务
+双击运行 run.bat
+
+# 重要提示
+- 保持CMD窗口打开，关闭窗口将停止服务
+- 使用 Ctrl+C 可以优雅停止服务
+- 服务日志会实时显示在窗口中
+```
+
+#### 4. 生产环境建议
+- **防火墙设置**: 允许Python访问网络
+- **端口管理**: 确保8000端口未被占用
+- **服务监控**: 可以使用任务计划程序设置开机自启
+- **日志管理**: 考虑将日志重定向到文件
+
+#### 5. 常见问题
+- **端口占用**: 使用 `netstat -ano | findstr :8000` 检查
+- **Python环境**: 确保Python 3.8+已安装并添加到PATH
+- **依赖安装失败**: 检查网络连接，脚本会自动尝试中国镜像
 
 ## 📖 API使用指南
 
@@ -183,37 +249,12 @@ video-download-api/
 ├── temp/                       # 临时文件目录（运行时创建）
 ├── requirements.txt            # Python依赖
 ├── start.py                   # 启动脚本
-├── deploy.sh                  # 部署脚本
-├── install.sh                 # 安装脚本
+├── deploy.sh                  # Linux一键部署脚本
+├── install.bat                # Windows一键部署脚本
+├── run.bat                    # Windows启动脚本
 └── README.md                  # 项目文档
 ```
 
-## 🚀 部署指南
-
-### 本地开发
-```bash
-python3 start.py --dev  # 开发模式（热重载）
-python3 start.py        # 生产模式
-```
-
-### 云服务器部署
-```bash
-# 使用统一部署脚本
-chmod +x deploy.sh
-./deploy.sh
-```
-
-部署脚本会自动：
-- **智能检测**操作系统类型
-- 安装Python环境和FFmpeg
-- 创建虚拟环境
-- 配置防火墙
-- 设置系统服务（可选开机自启动）
-
-**重要提示：**
-- **Python版本要求**: 需要Python 3.8+版本
-- **系统支持**: 推荐使用Ubuntu/Debian系统
-- **权限管理**: 应用始终以普通用户身份运行，遵循最小权限原则
 
 ## 🌍 支持平台
 
@@ -263,23 +304,9 @@ A: 系统采用智能回退策略：
 2. 失败时自动下载视频，再用FFmpeg提取音频
 3. 确保在各种情况下都能成功提取音频
 
-### Q: 出现500报错怎么办？
-A: 请检查以下项目：
-- 是否已安装FFmpeg
-- Python依赖是否正确安装
-- 8000端口是否被占用
-- 磁盘空间是否充足
-- 视频链接是否有效
-
 ### Q: 为什么不支持抖音？
 A: 抖音平台的反爬机制非常严格，即使使用最新的cookies也会很快失效。经过测试，yt-dlp一直提示需要"Fresh cookies"，说明cookies很快就会过期。为了避免给用户带来困扰，我们暂时移除了抖音支持，建议使用TikTok等其他平台。
 
-### Q: 如何在云服务器上部署？
-A: 使用提供的部署脚本：
-```bash
-chmod +x deploy.sh && ./deploy.sh
-```
-脚本会自动处理所有依赖安装和服务配置。
 
 ## 🤝 贡献指南
 
