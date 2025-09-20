@@ -34,16 +34,47 @@ chmod +x deploy.sh
 
 **Windows 系统**：
 ```cmd
+# 1. 克隆项目
 git clone https://github.com/tmwgsicp/video-download-api.git
 cd video-download-api
-双击运行: install.bat
+
+# 2. 运行安装脚本
+双击运行 install.bat
 ```
 
-> 💡 **Windows部署脚本说明**：
-> - 自动检查Python环境
-> - 自动创建虚拟环境和安装依赖
-> - 需要手动安装FFmpeg
-> - 使用run.bat启动，保持窗口运行
+**FFmpeg安装**（音频提取功能）：
+```cmd
+# 下载FFmpeg
+访问: https://ffmpeg.org/download.html#build-windows
+下载: Windows版本的FFmpeg
+
+# 安装步骤
+1. 解压到 C:\ffmpeg\
+2. 添加 C:\ffmpeg\bin 到系统PATH环境变量
+3. 重启命令提示符验证: ffmpeg -version
+```
+
+**启动服务**：
+```cmd
+# 启动API服务
+双击运行 run.bat
+
+# 重要提示
+- 保持CMD窗口打开，关闭窗口将停止服务
+- 使用 Ctrl+C 可以优雅停止服务
+- 服务日志会实时显示在窗口中
+```
+
+**生产环境建议**：
+- **防火墙设置**: 允许Python访问网络
+- **端口管理**: 确保8000端口未被占用
+- **服务监控**: 可以使用任务计划程序设置开机自启
+- **日志管理**: 考虑将日志重定向到文件
+
+**常见问题**：
+- **端口占用**: 使用 `netstat -ano | findstr :8000` 检查
+- **Python环境**: 确保Python 3.8+已安装并添加到PATH
+- **依赖安装失败**: 检查网络连接，脚本会自动尝试中国镜像
 
 #### 🔧 开发环境安装
 
@@ -77,52 +108,6 @@ python start.py
 - **主页**: http://localhost:8000
 - **API文档**: http://localhost:8000/docs
 - **健康检查**: http://localhost:8000/api/health
-
-### 🖥️ Windows生产部署详细说明
-
-#### 1. 安装步骤
-```cmd
-# 1. 克隆项目
-git clone https://github.com/tmwgsicp/video-download-api.git
-cd video-download-api
-
-# 2. 运行安装脚本
-双击运行 install.bat
-```
-
-#### 2. FFmpeg安装（音频提取功能）
-```cmd
-# 下载FFmpeg
-访问: https://ffmpeg.org/download.html#build-windows
-下载: Windows版本的FFmpeg
-
-# 安装步骤
-1. 解压到 C:\ffmpeg\
-2. 添加 C:\ffmpeg\bin 到系统PATH环境变量
-3. 重启命令提示符验证: ffmpeg -version
-```
-
-#### 3. 启动服务
-```cmd
-# 启动API服务
-双击运行 run.bat
-
-# 重要提示
-- 保持CMD窗口打开，关闭窗口将停止服务
-- 使用 Ctrl+C 可以优雅停止服务
-- 服务日志会实时显示在窗口中
-```
-
-#### 4. 生产环境建议
-- **防火墙设置**: 允许Python访问网络
-- **端口管理**: 确保8000端口未被占用
-- **服务监控**: 可以使用任务计划程序设置开机自启
-- **日志管理**: 考虑将日志重定向到文件
-
-#### 5. 常见问题
-- **端口占用**: 使用 `netstat -ano | findstr :8000` 检查
-- **Python环境**: 确保Python 3.8+已安装并添加到PATH
-- **依赖安装失败**: 检查网络连接，脚本会自动尝试中国镜像
 
 ## 📖 API使用指南
 
@@ -252,6 +237,7 @@ video-download-api/
 ├── deploy.sh                  # Linux一键部署脚本
 ├── install.bat                # Windows一键部署脚本
 ├── run.bat                    # Windows启动脚本
+├── test_all_scenarios.py      # 全功能测试脚本
 └── README.md                  # 项目文档
 ```
 
