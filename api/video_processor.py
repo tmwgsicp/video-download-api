@@ -12,12 +12,9 @@ logger = logging.getLogger(__name__)
 class VideoProcessor:
     """视频处理器，使用yt-dlp下载视频和提取音频"""
     
-    def __init__(self, cookies_file=None):
+    def __init__(self):
         """
         初始化视频处理器
-        
-        Args:
-            cookies_file: 可选的cookies文件路径，用于需要登录的平台
         """
         # 基础配置
         self.base_opts = {
@@ -27,14 +24,9 @@ class VideoProcessor:
             'prefer_ffmpeg': True,
         }
         
-        # 如果提供了cookies文件，添加到配置中
-        if cookies_file and os.path.exists(cookies_file):
-            self.base_opts['cookiefile'] = cookies_file
-            logger.info(f"已加载cookies文件: {cookies_file}")
-        
         # 平台特定的处理策略
+        # 注意：抖音(douyin)由于反爬限制暂时不支持
         self.platform_strategies = {
-            'douyin': self._get_douyin_strategy,
             'bilibili': self._get_bilibili_strategy,
             'xiaohongshu': self._get_xiaohongshu_strategy,
             'youtube': self._get_youtube_strategy,
@@ -88,7 +80,8 @@ class VideoProcessor:
         if 'bilibili.com' in url:
             return 'bilibili'
         elif 'douyin.com' in url or 'v.douyin.com' in url:
-            return 'douyin'
+            # 抖音暂时不支持，返回unsupported以便给出明确提示
+            return 'unsupported_douyin'
         elif 'xiaohongshu.com' in url:
             return 'xiaohongshu'
         elif 'youtube.com' in url or 'youtu.be' in url:
@@ -98,60 +91,7 @@ class VideoProcessor:
         else:
             return 'generic'
     
-    def _resolve_douyin_url(self, url: str) -> str:
-        """解析抖音短链接，获取真实的视频URL"""
-        if 'v.douyin.com' not in url:
-            return url
-            
-        try:
-            logger.info(f"解析抖音短链接: {url}")
-            
-            # 使用requests跟踪重定向
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-            
-            response = requests.get(url, headers=headers, allow_redirects=True, timeout=10)
-            final_url = response.url
-            
-            logger.info(f"重定向后的URL: {final_url}")
-            
-            # 检查是否是有效的抖音视频URL
-            if 'douyin.com' in final_url and ('video' in final_url or re.search(r'/\d+/', final_url)):
-                return final_url
-            else:
-                # 如果重定向的URL不包含视频ID，尝试从原始URL提取
-                logger.warning(f"重定向URL可能无效，尝试从原始URL提取视频ID")
-                return url  # 返回原始URL让yt-dlp处理
-                
-        except Exception as e:
-            logger.warning(f"解析抖音短链接失败: {str(e)}，使用原始URL")
-            return url
     
-    def _get_douyin_strategy(self):
-        """抖音平台的格式选择策略"""
-        return {
-            'format': 'best[height<=720]/best',
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Cache-Control': 'max-age=0'
-            },
-            'extractor_args': {
-                'douyin': {
-                    'api_hostname': 'www.douyin.com'
-                }
-            }
-        }
     
     def _get_bilibili_strategy(self):
         """B站平台的格式选择策略"""
@@ -181,6 +121,10 @@ class VideoProcessor:
         """根据平台优化配置选项"""
         platform = self._get_platform_from_url(url)
         opts = base_opts.copy()
+        
+        # 检查是否为不支持的平台
+        if platform == 'unsupported_douyin':
+            raise Exception("抖音平台由于反爬限制暂时不支持，建议使用其他平台的视频")
         
         if platform in self.platform_strategies:
             strategy = self.platform_strategies[platform]()
@@ -349,16 +293,14 @@ class VideoProcessor:
         try:
             import asyncio
             
-            # 处理抖音短链接
-            processed_url = self._resolve_douyin_url(url)
-            logger.info(f"视频下载使用的URL: {processed_url}")
+            logger.info(f"视频下载使用的URL: {url}")
             
             video_template = str(output_dir / f"video_{unique_id}.%(ext)s")
-            video_opts = self._get_optimized_opts(processed_url, self.video_opts)
+            video_opts = self._get_optimized_opts(url, self.video_opts)
             video_opts['outtmpl'] = video_template
             
             with yt_dlp.YoutubeDL(video_opts) as ydl:
-                await asyncio.to_thread(ydl.download, [processed_url])
+                await asyncio.to_thread(ydl.download, [url])
             
             # 查找下载的视频文件
             for ext in ['mp4', 'webm', 'mkv', 'avi', 'mov', 'flv']:
@@ -376,16 +318,14 @@ class VideoProcessor:
         try:
             import asyncio
             
-            # 处理抖音短链接
-            processed_url = self._resolve_douyin_url(url)
-            logger.info(f"音频下载使用的URL: {processed_url}")
+            logger.info(f"音频下载使用的URL: {url}")
             
             audio_template = str(output_dir / f"audio_{unique_id}.%(ext)s")
-            audio_opts = self._get_optimized_opts(processed_url, self.audio_opts)
+            audio_opts = self._get_optimized_opts(url, self.audio_opts)
             audio_opts['outtmpl'] = audio_template
             
             with yt_dlp.YoutubeDL(audio_opts) as ydl:
-                await asyncio.to_thread(ydl.download, [processed_url])
+                await asyncio.to_thread(ydl.download, [url])
             
             # 查找提取的音频文件
             for ext in ['mp3', 'm4a', 'wav', 'aac', 'ogg']:
@@ -473,15 +413,11 @@ class VideoProcessor:
         try:
             logger.info(f"开始获取视频信息: {url}")
             
-            # 处理抖音短链接
-            processed_url = self._resolve_douyin_url(url)
-            logger.info(f"处理后的URL: {processed_url}")
-            
             # 获取优化后的选项，只用于信息提取
-            opts = self._get_optimized_opts(processed_url, self.base_opts)
+            opts = self._get_optimized_opts(url, self.base_opts)
             
             with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(processed_url, download=False)
+                info = ydl.extract_info(url, download=False)
                 
             return {
                 'title': info.get('title', '未知标题'),
@@ -492,7 +428,7 @@ class VideoProcessor:
                 'description': info.get('description', ''),
                 'upload_date': info.get('upload_date', ''),
                 'thumbnail': info.get('thumbnail', ''),
-                'webpage_url': info.get('webpage_url', processed_url),
+                'webpage_url': info.get('webpage_url', url),
                 'extractor': info.get('extractor', ''),
                 'id': info.get('id', ''),
                 'formats': len(info.get('formats', []))

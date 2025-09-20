@@ -6,6 +6,8 @@
 import os
 import sys
 import subprocess
+import socket
+import psutil
 from pathlib import Path
 
 def check_dependencies():
@@ -18,7 +20,8 @@ def check_dependencies():
         "aiofiles": "aiofiles",
         "requests": "requests",
         "pyyaml": "yaml",
-        "aiohttp": "aiohttp"
+        "aiohttp": "aiohttp",
+        "psutil": "psutil"
     }
     
     missing_packages = []
@@ -62,6 +65,56 @@ def create_temp_dir():
     temp_dir.mkdir(exist_ok=True)
     print("✅ 临时目录已创建")
 
+def check_port_available(port):
+    """检查端口是否可用"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(('localhost', port))
+            return True
+        except socket.error:
+            return False
+
+def find_process_using_port(port):
+    """查找占用端口的进程"""
+    for conn in psutil.net_connections():
+        if conn.laddr.port == port and conn.status == 'LISTEN':
+            try:
+                process = psutil.Process(conn.pid)
+                return process.pid, process.name()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                return conn.pid, "未知进程"
+    return None, None
+
+def handle_port_conflict(port):
+    """处理端口冲突"""
+    print(f"⚠️  端口 {port} 已被占用")
+    
+    pid, process_name = find_process_using_port(port)
+    if pid:
+        print(f"📋 占用进程: {process_name} (PID: {pid})")
+        
+        # 如果是Python进程，很可能是之前启动的API服务
+        if 'python' in process_name.lower():
+            print("🤔 检测到可能是之前启动的API服务")
+            choice = input("是否终止该进程并重新启动? (y/N): ").lower()
+            
+            if choice == 'y':
+                try:
+                    process = psutil.Process(pid)
+                    process.terminate()
+                    process.wait(timeout=5)
+                    print(f"✅ 已终止进程 {pid}")
+                    return True
+                except (psutil.NoSuchProcess, psutil.TimeoutExpired, psutil.AccessDenied) as e:
+                    print(f"❌ 无法终止进程: {e}")
+                    return False
+        else:
+            print(f"💡 请手动终止进程 {pid} 或使用其他端口")
+    else:
+        print("💡 请检查并释放端口，或使用其他端口")
+    
+    return False
+
 def main():
     """主函数"""
     print("🚀 视频下载API启动检查")
@@ -84,6 +137,12 @@ def main():
     # 启动服务器
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 8000))
+    
+    # 检查端口是否可用
+    if not check_port_available(port):
+        if not handle_port_conflict(port):
+            print("❌ 无法启动服务，端口被占用")
+            sys.exit(1)
     
     print(f"\n🌐 启动API服务器...")
     print(f"   地址: http://localhost:{port}")

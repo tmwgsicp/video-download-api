@@ -28,7 +28,10 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """应用启动事件"""
-    await startup_cookies_check()
+    logger.info("🚀 视频下载API服务启动")
+    # 启动文件清理服务
+    if file_cleaner is not None:
+        asyncio.create_task(file_cleaner.start_cleanup_service())
 
 # CORS中间件配置
 app.add_middleware(
@@ -46,13 +49,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 TEMP_DIR = PROJECT_ROOT / "temp"
 TEMP_DIR.mkdir(exist_ok=True)
 
-# 初始化cookies管理器
-try:
-    from .cookies_manager import CookiesManager
-    cookies_manager = CookiesManager()
-except ImportError as e:
-    logger.warning(f"Cookies管理器导入失败: {e}，使用简化版本")
-    cookies_manager = None
+# cookies管理器已移除，抖音等平台暂时不支持
 
 # 初始化文件清理管理器
 try:
@@ -62,31 +59,6 @@ except ImportError as e:
     logger.warning(f"文件清理管理器导入失败: {e}，禁用文件清理功能")
     file_cleaner = None
 
-# 启动时检查cookies状态
-async def startup_cookies_check():
-    """启动时检查cookies状态"""
-    try:
-        if cookies_manager is None:
-            logger.info("📝 Cookies管理器未初始化，跳过cookies检查")
-            return
-            
-        logger.info("🔍 启动时检查cookies状态...")
-        check_results = await cookies_manager.check_all_cookies()
-        
-        # 打印状态报告
-        status_report = cookies_manager.get_status_report()
-        for line in status_report.split('\n'):
-            logger.info(line)
-        
-        # 启动定期检查
-        asyncio.create_task(cookies_manager.start_periodic_check())
-        
-        # 启动文件清理服务
-        if file_cleaner is not None:
-            asyncio.create_task(file_cleaner.start_cleanup_service())
-        
-    except Exception as e:
-        logger.error(f"启动时cookies检查失败: {e}")
 
 # 不再使用全局处理器，改为动态创建
 # video_processor = VideoProcessor()
@@ -249,12 +221,9 @@ async def process_video_task(task_id: str, url: str, extract_audio: bool = True,
     异步处理视频任务
     """
     try:
-        # 智能选择cookies文件
-        cookies_file = cookies_manager.get_cookies_file_for_url(url)
-        
-        # 为此任务创建专用的VideoProcessor
-        video_processor = VideoProcessor(cookies_file=cookies_file)
-        logger.info(f"任务 {task_id}: 使用cookies文件 {cookies_file or '无'}")
+        # 创建专用的VideoProcessor
+        video_processor = VideoProcessor()
+        logger.info(f"任务 {task_id}: 开始处理视频")
         
         # 更新状态：获取视频信息
         tasks[task_id].update({
@@ -412,131 +381,9 @@ async def download_file(file_id: str):
         logger.error(f"下载文件失败: {e}")
         raise HTTPException(status_code=500, detail=f"下载失败: {str(e)}")
 
-@app.get("/api/cookies/status")
-async def get_cookies_status():
-    """
-    获取所有平台cookies的状态
-    
-    Returns:
-        cookies状态报告
-    """
-    try:
-        # 获取状态报告
-        status_report = cookies_manager.get_status_report()
-        
-        # 检查所有cookies
-        check_results = await cookies_manager.check_all_cookies()
-        
-        return {
-            "status": "success",
-            "report": status_report,
-            "details": {
-                platform: {
-                    "valid": is_valid,
-                    "message": message
-                }
-                for platform, (is_valid, message) in check_results.items()
-            },
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"获取cookies状态失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取状态失败: {str(e)}")
 
-@app.post("/api/cookies/check")
-async def check_cookies():
-    """
-    手动触发cookies检查
-    
-    Returns:
-        检查结果
-    """
-    try:
-        check_results = await cookies_manager.check_all_cookies()
-        
-        all_valid = all(is_valid for is_valid, _ in check_results.values())
-        
-        return {
-            "status": "success" if all_valid else "warning",
-            "message": "所有cookies正常" if all_valid else "部分cookies存在问题",
-            "results": {
-                platform: {
-                    "valid": is_valid,
-                    "message": message
-                }
-                for platform, (is_valid, message) in check_results.items()
-            },
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"检查cookies失败: {e}")
-        raise HTTPException(status_code=500, detail=f"检查失败: {str(e)}")
 
-@app.post("/api/cookies/webhook/test")
-async def test_webhook_notification():
-    """
-    测试Webhook通知功能
-    
-    Returns:
-        测试结果
-    """
-    try:
-        # 发送测试消息
-        test_message = "🧪 这是一条测试消息，用于验证Webhook通知功能是否正常工作"
-        cookies_manager._send_notification(test_message, level='INFO')
-        
-        return {
-            "status": "success",
-            "message": "测试通知已发送",
-            "webhook_configured": bool(cookies_manager.webhook_url),
-            "webhook_url": cookies_manager.webhook_url[:50] + "..." if cookies_manager.webhook_url else None,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"测试Webhook通知失败: {e}")
-        raise HTTPException(status_code=500, detail=f"测试失败: {str(e)}")
 
-@app.post("/api/cookies/webhook/config")
-async def update_webhook_config(webhook_url: str):
-    """
-    更新Webhook配置
-    
-    Args:
-        webhook_url: 企微机器人Webhook URL
-        
-    Returns:
-        配置结果
-    """
-    try:
-        # 更新配置
-        cookies_manager.webhook_url = webhook_url
-        cookies_manager.notification_config['webhook_url'] = webhook_url
-        
-        # 保存到配置文件
-        config_path = cookies_manager.config_path
-        config = cookies_manager.config
-        config['notifications']['webhook_url'] = webhook_url
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, ensure_ascii=False, indent=2)
-        
-        # 发送测试消息
-        test_message = f"✅ Webhook配置已更新并测试成功！\n配置时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        cookies_manager._send_notification(test_message, level='INFO')
-        
-        return {
-            "status": "success",
-            "message": "Webhook配置已更新",
-            "webhook_url": webhook_url[:50] + "..." if len(webhook_url) > 50 else webhook_url,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"更新Webhook配置失败: {e}")
-        raise HTTPException(status_code=500, detail=f"配置失败: {str(e)}")
 
 @app.delete("/api/tasks/{task_id}")
 async def cancel_task(task_id: str):

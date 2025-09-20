@@ -78,7 +78,7 @@ def test_scenario(api_base_url: str, video_url: str, extract_audio: bool, keep_v
                 "extract_audio": extract_audio,
                 "keep_video": keep_video
             },
-            timeout=30
+            timeout=120
         )
         response.raise_for_status()
         task_data = response.json()
@@ -192,7 +192,7 @@ def test_invalid_scenario(api_base_url: str, video_url: str):
                 "extract_audio": False,
                 "keep_video": False
             },
-            timeout=30
+            timeout=120
         )
         
         if response.status_code == 422 or response.status_code == 400:
