@@ -1,0 +1,14 @@
+# B站Cookies示例文件 (可选)
+#
+# 🚀 使用方法：
+# 1. 登录bilibili.com
+# 2. 按F12 → Application → Cookies → https://www.bilibili.com
+# 3. 复制重要cookies或完整Cookie字符串
+# 4. 将此文件重命名为 bilibili.txt
+#
+# 📋 重要字段：
+# SESSDATA=your_sessdata_value; bili_jct=your_bili_jct; DedeUserID=your_user_id
+#
+# ⚠️ 注意：B站cookies是可选的，主要用于访问会员内容
+
+# 请在此行下方粘贴您的B站cookies

@@ -1,0 +1,13 @@
+# 视频下载API依赖文件 - Ubuntu/最新版本
+# 推荐在Ubuntu 20.04+系统上使用
+# 支持Python 3.8+，推荐Python 3.10+
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+yt-dlp>=2024.12.13
+pydantic>=2.7.0
+aiofiles>=24.1.0
+pyyaml>=6.0
+aiohttp>=3.9.0
+requests>=2.31.0
